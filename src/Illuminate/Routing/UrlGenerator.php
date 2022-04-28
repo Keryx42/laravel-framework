@@ -331,10 +331,12 @@ class UrlGenerator implements UrlGeneratorContract
      */
     public function signedRoute($name, $parameters = [], $expiration = null, $absolute = true)
     {
-        $parameters = $this->validateAndPrepareSignedRouteParameters($parameters, $expiration);
+        $preaperedParameters = $this->validateAndPrepareSignedRouteParameters($parameters, $expiration);
 
-        return $this->route($name, $parameters + [
-            'signature' => $this->createSignatureRouteParameterForUrl($this->route($name, $parameters, $absolute)),
+        return $this->route($name, $preaperedParameters + [
+            'signature' => $this->createSignatureRouteParameterForUrl(
+                $this->route($name, $preaperedParameters, $absolute)
+            ),
         ], $absolute);
     }
 
@@ -353,11 +355,13 @@ class UrlGenerator implements UrlGeneratorContract
         \DateTimeInterface|\DateInterval|int|null $expiration = null,
         bool $absolute = true,
     ): string {
-        $parameters = $this->validateAndPrepareSignedRouteParameters($parameters, $expiration);
+        $preaperedParameters = $this->validateAndPrepareSignedRouteParameters($parameters, $expiration);
 
-        return $this->action($name, $parameters + [
-                'signature' => $this->createSignatureRouteParameterForUrl($this->action($name, $parameters, $absolute)),
-            ], $absolute);
+        return $this->action($name, $preaperedParameters + [
+            'signature' => $this->createSignatureRouteParameterForUrl(
+                $this->action($name, $preaperedParameters, $absolute)
+            ),
+        ], $absolute);
     }
 
     /**
