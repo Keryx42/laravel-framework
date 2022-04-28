@@ -349,6 +349,38 @@ class UrlGenerator implements UrlGeneratorContract
     }
 
     /**
+     * Create a signed route URL for an action.
+     *
+     * @param string|array $name
+     * @param mixed $parameters
+     * @param \DateTimeInterface|\DateInterval|int|null $expiration
+     * @param bool $absolute
+     * @return string
+     */
+    public function signedRouteForAction(
+        string|array                            $name,
+        mixed                                   $parameters = [],
+        \DateTimeInterface|\DateInterval|int|null $expiration = null,
+        bool                                    $absolute = true,
+    ): string {
+        $this->ensureSignedRouteParametersAreNotReserved(
+            $parameters = Arr::wrap($parameters)
+        );
+
+        if ($expiration) {
+            $parameters += ['expires' => $this->availableAt($expiration)];
+        }
+
+        ksort($parameters);
+
+        $key = call_user_func($this->keyResolver);
+
+        return $this->action($name, $parameters + [
+                'signature' => hash_hmac('sha256', $this->action($name, $parameters, $absolute), $key),
+            ], $absolute);
+    }
+
+    /**
      * Ensure the given signed route parameters are not reserved.
      *
      * @param  mixed  $parameters
@@ -381,6 +413,24 @@ class UrlGenerator implements UrlGeneratorContract
     public function temporarySignedRoute($name, $expiration, $parameters = [], $absolute = true)
     {
         return $this->signedRoute($name, $parameters, $expiration, $absolute);
+    }
+
+    /**
+     * Create a temporary signed route URL for an action.
+     *
+     * @param string|array $name
+     * @param \DateTimeInterface|\DateInterval|int $expiration
+     * @param mixed $parameters
+     * @param bool $absolute
+     * @return string
+     */
+    public function temporarySignedRouteForAction(
+        string|array                         $name,
+        \DateTimeInterface|\DateInterval|int $expiration,
+        mixed                                $parameters = [],
+        bool                                 $absolute = true
+    ): string {
+        return $this->signedRouteForAction($name, $parameters, $expiration, $absolute);
     }
 
     /**
