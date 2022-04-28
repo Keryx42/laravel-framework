@@ -331,20 +331,10 @@ class UrlGenerator implements UrlGeneratorContract
      */
     public function signedRoute($name, $parameters = [], $expiration = null, $absolute = true)
     {
-        $this->ensureSignedRouteParametersAreNotReserved(
-            $parameters = Arr::wrap($parameters)
-        );
-
-        if ($expiration) {
-            $parameters = $parameters + ['expires' => $this->availableAt($expiration)];
-        }
-
-        ksort($parameters);
-
-        $key = call_user_func($this->keyResolver);
+        $parameters = $this->validateAndPrepareSignedRouteParameters($parameters, $expiration);
 
         return $this->route($name, $parameters + [
-            'signature' => hash_hmac('sha256', $this->route($name, $parameters, $absolute), $key),
+            'signature' => $this->createSignatureRouteParameterForUrl($this->route($name, $parameters, $absolute)),
         ], $absolute);
     }
 
@@ -358,25 +348,15 @@ class UrlGenerator implements UrlGeneratorContract
      * @return string
      */
     public function signedRouteForAction(
-        string|array                            $name,
-        mixed                                   $parameters = [],
+        string|array $name,
+        mixed $parameters = [],
         \DateTimeInterface|\DateInterval|int|null $expiration = null,
-        bool                                    $absolute = true,
+        bool $absolute = true,
     ): string {
-        $this->ensureSignedRouteParametersAreNotReserved(
-            $parameters = Arr::wrap($parameters)
-        );
-
-        if ($expiration) {
-            $parameters += ['expires' => $this->availableAt($expiration)];
-        }
-
-        ksort($parameters);
-
-        $key = call_user_func($this->keyResolver);
+        $parameters = $this->validateAndPrepareSignedRouteParameters($parameters, $expiration);
 
         return $this->action($name, $parameters + [
-                'signature' => hash_hmac('sha256', $this->action($name, $parameters, $absolute), $key),
+                'signature' => $this->createSignatureRouteParameterForUrl($this->action($name, $parameters, $absolute)),
             ], $absolute);
     }
 
@@ -400,6 +380,44 @@ class UrlGenerator implements UrlGeneratorContract
             );
         }
     }
+
+    /**
+     *  Encapsulation of reused parameter logic for creating signed routes.
+     *
+     * @param mixed $parameters
+     * @param \DateTimeInterface|\DateInterval|int|null $expiration
+     * @return array
+     */
+    protected function validateAndPrepareSignedRouteParameters(
+        mixed $parameters,
+        \DateTimeInterface|\DateInterval|int|null $expiration = null
+    ) : array {
+        $this->ensureSignedRouteParametersAreNotReserved(
+            $parameters = Arr::wrap($parameters)
+        );
+
+        if ($expiration) {
+            $parameters += ['expires' => $this->availableAt($expiration)];
+        }
+
+        ksort($parameters);
+
+        return $parameters;
+    }
+
+    /**
+     * Encapsulation of reused signature hash logic for creating signed routes.
+     *
+     * @param string $url
+     * @return string
+     */
+    protected function createSignatureRouteParameterForUrl(string $url): string
+    {
+        $key = call_user_func($this->keyResolver);
+
+        return hash_hmac('sha256', $url, $key);
+    }
+
 
     /**
      * Create a temporary signed route URL for a named route.
